@@ -67,6 +67,7 @@ class ICP:
     poc_tiers: list[PocTier]
     personas_text: str
     needs_readable_trust_page: tuple[str, ...] = ()
+    must_earn_rows: tuple[str, ...] = ()  # rubric rows that need a verified 'yes' before 'qualified'
 
     @property
     def rules_by_id(self) -> dict[str, Rule]:
@@ -181,6 +182,13 @@ def parse_icp(text: str) -> ICP:
     if unknown_ids := [r for r in trust_rules if r not in known_ids]:
         raise ICPFormatError(f"docs/ICP.md: 'Rules that need a readable trust page' lists unknown rule ids {unknown_ids}")
 
+    try:  # optional section
+        must_earn = tuple(re.findall(r"^\s*[-*]\s+([A-Z][A-Z0-9_]+)\s*$", _section(text, "Rows that must earn points"), re.MULTILINE))
+    except ICPFormatError:
+        must_earn = ()
+    if unknown_rows := [r for r in must_earn if r not in rows]:
+        raise ICPFormatError(f"docs/ICP.md: 'Rows that must earn points' lists unknown row ids {unknown_rows}")
+
     return ICP(
         text=text,
         rows=rows,
@@ -193,6 +201,7 @@ def parse_icp(text: str) -> ICP:
         poc_tiers=tiers,
         personas_text=_section(text, "Typical pain points").strip(),
         needs_readable_trust_page=trust_rules,
+        must_earn_rows=must_earn,
     )
 
 

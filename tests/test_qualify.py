@@ -174,6 +174,35 @@ def test_qualified_company_still_gets_sprinto_customer_check(monkeypatch, ctx):
     assert result.iterations[0].action.action == "web_search"
 
 
+def no_gap_signals(gap_value="no"):
+    """Strong generic B2B signals (>= 60 points) but the compliance-gap row has no 'yes'."""
+    ids = ["ENT_PLAN", "ENT_DEMO", "ENT_LOGOS", "ENT_SSO", "DATA_INTEGRATIONS", "DATA_SENSITIVE", "DATA_DPA",
+           "STAGE_SIZE", "GEO_US", "GEO_EU_UK", "HIRING_ENT_SALES"]
+    gap_ids = [r.id for r in ICP.rules if r.row == "GAP"]
+    return ([yes(i) for i in ids] + [yes("STAGE_SERIES", "We raised our Series B in March 2026")]
+            + [Signal(rule_id=g, value=gap_value) for g in gap_ids] + [Signal(rule_id="DQ_SPRINTO_CUSTOMER", value="no")])
+
+
+def test_icp_reads_rows_that_must_earn_points():
+    assert ICP.must_earn_rows == ("GAP",)
+
+
+def test_high_score_without_any_compliance_gap_is_rejected(monkeypatch, ctx):
+    install_fake_llm(monkeypatch, [no_gap_signals("no")])
+    result = q.qualify(ctx)
+    assert q.score_signals(no_gap_signals("no"), ICP)[0] >= 60  # would have qualified before the rule
+    assert result.verdict == "rejected"
+    assert "no buying trigger" in result.reasoning
+
+
+def test_high_score_with_gap_still_unknown_is_insufficient_data(monkeypatch, ctx):
+    install_fake_llm(monkeypatch, [no_gap_signals("unknown")], actions=[AgentAction(action="decide", argument="", why="done")] * 3)
+    monkeypatch.setattr(q, "fetch_extra_page", lambda url, domain, settings, fetcher=None: (PageContent(url=url, error="HTTP 404", status_code=404, quality="error"), []))
+    result = q.qualify(ctx)
+    assert result.verdict == "insufficient_data"
+    assert any("Compliance gap" in u for u in result.critical_unknowns)
+
+
 def test_list_disqualifier_needs_no_llm(monkeypatch, ctx):
     calls = install_fake_llm(monkeypatch, [[]])
     ctx.domain = "vanta.com"

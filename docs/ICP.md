@@ -128,6 +128,16 @@ checked and found nothing (e.g., no trust page).
 - GAP_ONE_FRAMEWORK
 - GAP_GDPR_ONLY
 
+## Rows that must earn points
+> The case brief defines the ICP as companies **preparing for an audit or under pressure to get certified**. Generic
+> B2B signals (enterprise plan, customer data, US/EU customers, funding) can reach 60 on their own, so without this
+> rule an already fully certified company would qualify. A row listed here must earn points (a `yes` with verified
+> evidence) before a company can be `qualified`:
+> - every rule in the row answered `no` → `rejected` (no buying trigger);
+> - no `yes` yet but some rules `unknown` → the agent loop keeps looking; still nothing → `insufficient_data`.
+
+- GAP
+
 ## Verdicts
 | Setting | Value |
 |---|---|

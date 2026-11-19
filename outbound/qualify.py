@@ -202,6 +202,27 @@ def critical_unknowns(signals: list[Signal], profile: CompanyProfile, icp: ICP) 
     return missing
 
 
+def required_rows_status(signals: list[Signal], icp: ICP) -> tuple[list[str], list[str]]:
+    """Rows from ICP.md 'Rows that must earn points' that have not earned any points yet.
+
+    Returns (failed, open): `failed` = every rule in the row is a plain 'no' (it can never earn points);
+    `open` = no verified 'yes' yet, but at least one rule is still unknown (more research might find it).
+    """
+    by_id = {s.rule_id: s for s in signals}
+    failed, still_open = [], []
+    for row_id in icp.must_earn_rows:
+        rules = [r for r in icp.rules if r.row == row_id and r.points > 0]
+        sigs = [by_id.get(r.id) for r in rules]
+        if any(s is not None and s.value == "yes" and s.evidence for s in sigs):
+            continue
+        name = icp.rows[row_id].name
+        if all(s is not None and s.value == "no" for s in sigs):
+            failed.append(name)
+        else:
+            still_open.append(name)
+    return failed, still_open
+
+
 def top_reasons(lines: list[ScoreLine], n: int = 2) -> list[str]:
     best = sorted((ln for ln in lines if ln.points > 0), key=lambda ln: -ln.points)[:n]
     return [f"{ln.rule_id} +{ln.points}: {ln.reason.removeprefix('yes: ')}" for ln in best]
@@ -439,9 +460,11 @@ def qualify(ctx: QualifyContext) -> QualificationResult:
             break
         score, lines = score_signals(signals, icp)
         unknowns = critical_unknowns(signals, ctx.profile, icp)
+        req_failed, req_open = required_rows_status(signals, icp)
+        unknowns += [f"{name} (no verified evidence yet)" for name in req_open if name not in unknowns]
         borderline = borderline_min <= score < qualified_min
         needs_customer_check = score >= borderline_min and not customer_check_done and llm.search_available()
-        hopeless = max_possible_score(signals, icp) < qualified_min
+        hopeless = max_possible_score(signals, icp) < qualified_min or bool(req_failed)
         if hopeless or not (borderline or unknowns or needs_customer_check):
             break
         if len(iterations) >= ctx.settings.max_agent_iterations:
@@ -481,10 +504,18 @@ def qualify(ctx: QualifyContext) -> QualificationResult:
 
     score, lines = score_signals(signals, icp)
     unknowns = critical_unknowns(signals, ctx.profile, icp)
+    req_failed, req_open = required_rows_status(signals, icp)
     possible = max_possible_score(signals, icp)
     evidence = [e for s in signals if s.value == "yes" for e in s.evidence]
     if possible < qualified_min:
         verdict, why = "rejected", f"score {score}; even if every unknown were 'yes' the maximum is {possible} (< {qualified_min})"
+    elif req_failed:
+        verdict, why = "rejected", (f"score {score}, but no buying trigger: every rule in {', '.join(req_failed)} was answered 'no' "
+                                    "(ICP.md: Rows that must earn points)")
+    elif req_open and score >= qualified_min:
+        unknowns += [f"{name} (no verified evidence yet)" for name in req_open if name not in unknowns]
+        verdict, why = "insufficient_data", (f"score {score}, but {', '.join(req_open)} has no verified evidence yet "
+                                             "(ICP.md: Rows that must earn points)")
     elif unknowns:
         verdict, why = "insufficient_data", f"score {score}, but still unknown after research: {', '.join(unknowns)}"
     elif score >= qualified_min:
