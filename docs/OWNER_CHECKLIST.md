@@ -9,7 +9,7 @@ your judgement. Do them in order; each has a "good output" so you know it worked
    (see `docs/SETUP_WINDOWS.md` steps 5–6).
 3. Run:
    ```powershell
-   cd "E:\AI by Mihir Term 2\Case Study 2\sprinto-outbound_1\sprinto-outbound"
+   cd "E:\AI by Mihir Term 2\Case Study 2\sprinto-outbound"
    .\.venv\Scripts\Activate.ps1
    python scripts\list_models.py
    ```

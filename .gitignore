@@ -6,8 +6,10 @@ credentials.json
 token.json
 *.pem
 
-# course material (not ours to publish in a public repo)
+# course material and the original starter download (kept locally, never published)
 docs/MESA_Case_02.pdf
+course-material/
+_archive/
 
 # python
 .venv/

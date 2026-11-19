@@ -15,3 +15,5 @@ __pycache__/
 .claude/
 tests/
 docs/MESA_Case_02.pdf
+course-material/
+_archive/
