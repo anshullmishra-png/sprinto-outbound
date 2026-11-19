@@ -149,6 +149,7 @@ def icp_rules() -> dict:
         "rules": [{"id": r.id, "row": r.row, "points": r.points, "kind": r.kind, "question": r.question} for r in icp.rules],
         "disqualifiers": [{"id": d.id, "name": d.name, "check": d.python_check} for d in icp.disqualifiers],
         "settings": icp.settings,
+        "must_earn_rows": list(icp.must_earn_rows),  # rows that need a verified 'yes' before 'qualified'
         "competitors": icp.competitors,
         "known_customers": icp.customers,
         "poc_tiers": [{"band": "any" if t.min_employees is None else f"{t.min_employees}-{t.max_employees}", "priority": t.priority,
