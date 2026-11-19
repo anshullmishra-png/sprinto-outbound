@@ -32,7 +32,10 @@ def review_queue(run: dict[str, dict[str, dict]]) -> list[str]:
         draft = (arts.get("06_email") or {}).get("output") or {}
         scrape = (arts.get("01_scrape") or {})
         if scrape and scrape.get("status") != "done":
-            items.append(f"- **{domain}**: no page could be read. Check it by hand or skip it.")
+            pages = (scrape.get("output") or {}).get("pages") or []
+            reason = next((p.get("error") for p in pages if p.get("error")), None)
+            why = f" ({reason})" if reason else ""
+            items.append(f"- **{domain}**: no page could be read{why}. Stopped, no retries. Check it by hand or skip it.")
         if q.get("verdict") == "insufficient_data":
             items.append(f"- **{domain}**: insufficient data after research ({', '.join(q.get('critical_unknowns') or []) or 'see reasoning'}). "
                          f"A 2-minute manual look decides it.")
